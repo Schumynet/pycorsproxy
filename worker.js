@@ -1,5 +1,8 @@
 importScripts("https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js");
 
+// URL RAW del tuo file Python su GitHub
+const PYTHON_URL = "https://raw.githubusercontent.com/schumynet/pycorsproxy/main/python_code.py";
+
 let pyodideReady = loadPyodide({
   indexURL: "https://cdn.jsdelivr.net/pyodide/v0.24.1/full/"
 });
@@ -13,24 +16,16 @@ export default {
 
     const pyodide = await pyodideReady;
 
-    const pythonCode = `
-import js
-from pyodide.http import pyfetch
-
-async def do_request(url):
-    r = await pyfetch(url, method="GET")
-    data = await r.bytes()
-    headers = dict(r.headers)
-    return data, headers
-`;
-
+    // Carica il codice Python da GitHub RAW
+    const pythonCode = await (await fetch(PYTHON_URL)).text();
     await pyodide.runPythonAsync(pythonCode);
 
+    // Esegui la funzione Python
     const [data, headers] = await pyodide.runPythonAsync(
-      `await do_request("${url}")`
+      `await proxy("${url}")`
     );
 
-    const resp = new Response(data, {
+    return new Response(data, {
       status: 200,
       headers: {
         "Content-Type": headers["content-type"] || "application/octet-stream",
@@ -39,7 +34,5 @@ async def do_request(url):
         "Access-Control-Allow-Methods": "GET, POST, OPTIONS"
       }
     });
-
-    return resp;
   }
 };
